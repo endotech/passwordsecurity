@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パスワード突破ゲーム</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+            color: #333;
+            transition: background-color 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            width: 100%;
+        }
+        .centered {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .profile-card {
+            background-color: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        .profile-card img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+        .content-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .hint {
+            color: #555;
+            font-size: 0.9em;
+        }
+        .info-list {
+            margin-top: 20px;
+            text-align: left;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        .game-clear {
+            font-size: 1.5em;
+            color: white;
+            background-color: #28a745;
+            padding: 10px;
+            border-radius: 5px;
+            animation: glow 1s infinite alternate;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .heading {
+            text-align: center;
+        }
+        @keyframes glow {
+            from {
+                background-color: #28a745;
+                box-shadow: 0 0 10px #28a745;
+            }
+            to {
+                background-color: #45a049;
+                box-shadow: 0 0 20px #45a049;
+            }
+        }
+        .password-check {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center; /* 中央に配置 */
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>パスワード突破ゲーム</h1>
+    </header>
+    <main id="initial-content" class="centered">
+        <div class="profile-card">
+            <h2>ゲーム概要</h2>
+            <p>このゲームでは、パスワードを推測して情報を乗っ取る挑戦を行います。各レベルには異なるパスワードが設定されており、制限時間内に正しいパスワードを見つけてください。失敗すると試行回数が減りますので注意しましょう。</p>
+            <button onclick="startGame()">スタート</button>
+        </div>
+    </main>
+    <main id="game-content" style="display: none;">
+        <div class="heading">
+            <h2>挑戦！パスワードを突破しよう</h2>
+            <p id="level-display">レベル: 1</p>
+        </div>
+        <div class="content-container">
+            <div class="profile-card">
+                <img id="profile-image" src="" alt="プロフィール画像">
+                <strong>名前:</strong> <span id="profile-name"></span><br>
+                <strong>誕生日:</strong> <span id="profile-birthdate"></span>
+                <div class="form-container">
+                    <input type="text" id="guess-input" placeholder="パスワードを入力">
+                    <button onclick="guessPassword()">認証</button>
+                </div>
+            </div>
+            <div class="info-list">
+                <h3>あなたが乗っ取った情報</h3>
+                <ul id="stolen-info"></ul>
+            </div>
+        </div>
+        <p id="guess-result"></p>
+        <p id="hint" class="hint"></p>
+        <p id="timer">残り時間: 30 秒</p>
+    </main>
+    <script>
+        const profiles = [
+            { name: "山田 太郎", birthdate: "2025年5月5日", password: "20250505", image: "yamada.png", info: "太郎のクレジットカード番号" },
+            { name: "鈴木 花子", birthdate: "2025年7月7日", password: "Hanako0707", image: "suzuki.png", info: "花子の住所と電話番号" },
+            { name: "佐藤 次郎", birthdate: "2025年6月6日", password: "Jiro0606!", image: "sato.png", info: "次郎のメールアドレスとパスワード" }
+        ];
+        let currentLevel = 0;
+        let attempts = 0;
+        let timer;
+        let timeLeft = 30;
+        const stolenInfo = [];
+
+        function startGame() {
+            document.getElementById('initial-content').style.display = 'none';
+            document.getElementById('game-content').style.display = 'block';
+            currentLevel = 0;
+            attempts = 0;
+            timeLeft = 30;
+            stolenInfo.length = 0;
+            updateInfoList();
+            showProfile();
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 30;
+            document.getElementById('timer').textContent = `残り時間: ${timeLeft} 秒`;
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = `残り時間: ${timeLeft} 秒`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    alert("時間切れ！最初からやり直してください。");
+                    resetGame();
+                }
+            }, 1000);
+        }
+
+        function showProfile() {
+            const profile = profiles[currentLevel];
+            document.getElementById('profile-name').textContent = profile.name;
+            document.getElementById('profile-birthdate').textContent = profile.birthdate;
+            document.getElementById('profile-image').src = profile.image;
+            document.getElementById('profile-image').alt = `${profile.name}のプロフィール画像`;
+            document.getElementById('level-display').textContent = `レベル: ${currentLevel + 1}`;
+            document.getElementById('guess-input').value = '';
+            document.getElementById('guess-result').textContent = '';
+            document.getElementById('hint').textContent = '';
+        }
+
+        function guessPassword() {
+            const input = document.getElementById('guess-input').value;
+            const profile = profiles[currentLevel];
+            const result = document.getElementById('guess-result');
+            if (input === profile.password) {
+                result.textContent = "突破成功！";
+                stolenInfo.push(profile.info);
+                updateInfoList();
+                currentLevel++;
+                if (currentLevel < profiles.length) {
+                    startTimer();
+                    showProfile();
+                } else {
+                    clearInterval(timer);
+                    showGameClear();
+                }
+            } else {
+                attempts++;
+                result.textContent = `失敗... 残り試行回数: ${3 - attempts}`;
+                if (attempts >= 3) {
+                    alert("試行回数が上限に達しました。最初からやり直してください。");
+                    resetGame();
+                } else {
+                    showHint();
+                }
+            }
+        }
+
+        function showHint() {
+            const hints = [
+                "ヒント: 誕生日を数字8桁で入力してみて！",
+                "ヒント: 名前（英語）+誕生日（数字4桁）の組み合わせ！",
+                "ヒント: 名前（英語）+誕生日（数字4桁）+記号の組み合わせ！"
+            ];
+            document.getElementById('hint').textContent = hints[currentLevel];
+        }
+
+        function updateInfoList() {
+            const infoList = document.getElementById('stolen-info');
+            infoList.innerHTML = '';
+            stolenInfo.forEach(info => {
+                const li = document.createElement('li');
+                li.textContent = info;
+                infoList.appendChild(li);
+            });
+        }
+
+        function showGameClear() {
+            document.body.style.backgroundColor = "#4CAF50";
+            let stolenInfoHTML = stolenInfo.map(info => `<li>${info}</li>`).join('');
+            const potentialDamage = `
+                <h4>パスワードでアカウントが乗っ取られると...</h4>
+                <ul>
+                    <li>個人情報が流出する</li>
+                    <li>金融被害（銀行口座、クレジットカード）</li>
+                    <li>アカウントが悪用される</li>
+                </ul>
+                <div class="password-check">
+                    <h4>どんなパスワードが乗っ取られにくい？</h4>
+                    <input type="text" id="password-check-input" placeholder="パスワードを入力">
+                    <button onclick="evaluatePassword()">チェック</button>
+                    <p id="password-strength-result"></p>
+                    <div id="password-feedback"></div>
+                </div>
+            `;
+            document.getElementById('game-content').innerHTML = `
+                <div class="game-clear">
+                    ゲームクリア！あなたはすべての情報を乗っ取りました！<br>
+                    乗っ取った情報:
+                    <ul>${stolenInfoHTML}</ul>
+                </div>
+                ${potentialDamage}
+            `;
+        }
+
+        function evaluatePassword() {
+            const password = document.getElementById('password-check-input').value;
+            const result = document.getElementById('password-strength-result');
+            const feedback = document.getElementById('password-feedback');
+            const strength = checkPasswordStrength(password);
+            result.textContent = `パスワード強度: ${strength.strength}`;
+            feedback.innerHTML = strength.feedback;
+        }
+
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            let feedback = [];
+            if (password.length >= 8) {
+                strength++;
+            } else {
+                feedback.push("パスワードは8文字以上が望ましいです");
+            }
+            if (password.match(/[A-Z]/)) {
+                strength++;
+            } else {
+                feedback.push("大文字を含めると良いです");
+            }
+            if (password.match(/[a-z]/)) {
+                strength++;
+            } else {
+                feedback.push("小文字を含めると良いです");
+            }
+            if (password.match(/[0-9]/)) {
+                strength++;
+            } else {
+                feedback.push("数字を含めると良いです");
+            }
+            if (password.match(/[\W]/)) {
+                strength++;
+            } else {
+                feedback.push("記号を含めると良いです");
+            }
+            return { strength: ['とても弱い', '弱い', '普通', '強い', 'とても強い'][strength - 1], feedback: feedback.join('<br>') };
+        }
+
+        function resetGame() {
+            clearInterval(timer);
+            document.getElementById('initial-content').style.display = 'flex';
+            document.getElementById('game-content').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
